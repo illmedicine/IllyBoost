@@ -1,0 +1,157 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>IllyBoost UI Demo</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+    :root{--bg-dark:#071128;--card:#071837;--muted:#9aa9c6;--accent1:#00f5a0;--accent2:#7c3aed}
+    body{font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,#030416 0%, #071128 60%);color:#eaf2ff;margin:20px}
+    .container{max-width:1100px;margin:0 auto}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    button{background:linear-gradient(90deg,var(--accent1),var(--accent2));border:0;padding:10px 14px;border-radius:10px;color:#071128;font-weight:700}
+    .rows{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:10px;padding:12px;max-height:70vh;overflow:auto;box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+    .row{display:flex;align-items:center;padding:12px;border-radius:10px;margin-bottom:8px;background:linear-gradient(180deg, rgba(255,255,255,0.008), transparent);border:1px solid transparent}
+    .row .index{width:28px;color:var(--muted)}
+    .row .url{flex:1;margin:0 12px;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.02);color:white;font-weight:500;transition:all 150ms}
+    .row.active .url{background:rgba(0,245,160,0.08);border-color:rgba(0,245,160,0.3)}
+    .meter{width:240px;height:14px;background:rgba(3,6,23,0.7);border-radius:999px;margin-right:8px;overflow:hidden;display:flex;align-items:center}
+    .meter .bar{height:100%;background:linear-gradient(90deg,var(--accent1),var(--accent2));width:0%;transition:width 300ms}
+    .bw{width:100px;text-align:right;color:var(--muted);margin-right:12px;font-weight:600}
+    .vm{width:320px;color:var(--accent2);font-weight:600;display:flex;align-items:center;gap:8px}
+    .preview-btn{padding:6px 10px;font-size:12px;background:rgba(0,245,160,0.12);border:1px solid rgba(0,245,160,0.3);color:var(--accent1);border-radius:6px;cursor:pointer}
+    .preview-btn:hover{background:rgba(0,245,160,0.2);border-color:var(--accent1)}
+    .preview-modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center}
+    .preview-modal.active{display:flex}
+    .preview-modal-content{background:#071837;border-radius:16px;padding:20px;max-width:85vw;max-height:85vh;overflow:auto;border:1px solid rgba(255,255,255,0.1);position:relative}
+    .preview-modal-close{position:absolute;top:12px;right:12px;background:transparent;border:none;color:var(--muted);font-size:24px;cursor:pointer}
+    .preview-modal-title{color:var(--accent1);margin-bottom:16px;font-weight:700;font-size:14px}
+    .preview-screenshot{max-width:100%;max-height:70vh;border-radius:10px;border:1px solid rgba(255,255,255,0.1)}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h2>IllyBoost — UI Demo</h2>
+      <div class="controls">
+        <button id="run">Run Selected</button>
+        <button id="refresh">Refresh</button>
+      </div>
+    </header>
+
+    <div class="rows" id="rows"></div>
+  </div>
+
+  <script>
+    const rowsEl = document.getElementById('rows');
+    const ROWS = 8;
+    const state = [];
+
+    for (let i=1;i<=ROWS;i++){
+      const r = { id:i, url: '', bw: 0, vm: '-' , selected:false };
+      state.push(r);
+    }
+
+    function render(){
+      rowsEl.innerHTML='';
+      state.forEach(r=>{
+        const div = document.createElement('div'); div.className=`row ${r.bw>20000? 'active':''}`;
+        div.innerHTML = `
+          <input type="checkbox" data-id="${r.id}" ${r.selected? 'checked':''} />
+          <div class="index">${r.id}</div>
+          <div style="display:flex;align-items:center;">
+            <svg class="icon" viewBox="0 0 24 24" width="18" height="18" style="margin-right:8px"><path d="M10.5 13.5l-3 3a4 4 0 0 1-5.657-5.657l3-3a4 4 0 0 1 5.657 5.657zM13.5 10.5l3-3a4 4 0 0 1 5.657 5.657l-3 3a4 4 0 0 1-5.657-5.657z" stroke="#cfefff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+            <input class="url" data-id="${r.id}" value="${r.url}" placeholder="Enter URL" />
+          </div>
+          <div class="meter"><div class="bar" style="width:${Math.min(100,(r.bw/50000)*100)}%"></div><div class="glow" style="width:${Math.min(100,(r.bw/50000)*100)}%"></div></div>
+          <div class="bw">${formatBytes(r.bw)}/s</div>
+          <div class="vm">
+            <span class="status-dot ${r.bw>20000? 'pulse active':''}"></span>
+            <span>${r.vm}</span>
+            <button class="preview-btn" data-id="${r.id}" data-url="${r.url}">📸 Preview</button>
+          </div>
+        `;
+        rowsEl.appendChild(div);
+      });
+      // wire checkbox handlers
+      rowsEl.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+        cb.onchange = e=>{
+          const id = +e.target.dataset.id; state.find(x=>x.id===id).selected = e.target.checked; render();
+        }
+      });
+      // wire URL input handlers
+      rowsEl.querySelectorAll('input.url').forEach(input=>{
+        input.onchange = e=>{
+          const id = +e.target.dataset.id; 
+          const row = state.find(x=>x.id===id);
+          if (row) row.url = e.target.value;
+        }
+      });
+      // wire preview buttons
+      rowsEl.querySelectorAll('.preview-btn').forEach(btn=>{
+        btn.onclick = e=>{
+          const id = +e.target.dataset.id;
+          const row = state.find(x=>x.id===id);
+          const url = row ? row.url : e.target.dataset.url;
+          showPreviewModal(id, url);
+        }
+      });
+    }
+
+    function formatBytes(b){
+      if (b>1e9) return (b/1e9).toFixed(2)+' GB';
+      if (b>1e6) return (b/1e6).toFixed(2)+' MB';
+      if (b>1e3) return (b/1e3).toFixed(2)+' KB';
+      return b.toFixed(0)+' B';
+    }
+
+    // simulate live bandwidth updates when 'Run' clicked
+    function startSimulation(){
+      // assign VM ids for selected rows
+      state.forEach(r=>{ if (r.selected) r.vm = 'agent-' + (Math.floor(Math.random()*10)+1); });
+      render();
+      // ramp up random traffic patterns
+      clearInterval(window._simInterval);
+      window._simInterval = setInterval(()=>{
+        state.forEach(r=>{
+          if (r.vm !== '-') {
+            // simulate traffic spikes
+            const change = (Math.random()*200000) * (Math.random()<0.2 ? 5 : 1);
+            r.bw = Math.max(0, (r.bw*0.7) + change);
+          } else {
+            // small idle noise
+            r.bw = Math.max(0, r.bw*0.9 - Math.random()*500);
+          }
+        });
+        render();
+      }, 700);
+    }
+
+    document.getElementById('run').onclick = startSimulation;
+    document.getElementById('refresh').onclick = ()=>{ state.forEach(r=>{ r.selected=false; r.vm='-'; r.bw=0 }); render(); clearInterval(window._simInterval); };
+
+    // Preview Modal
+    function showPreviewModal(rowId, url) {
+      const modal = document.createElement('div');
+      modal.className = 'preview-modal active';
+      modal.innerHTML = `
+        <div class="preview-modal-content">
+          <button class="preview-modal-close">&times;</button>
+          <div class="preview-modal-title">Screenshot - Row ${rowId}: ${url}</div>
+          <div style="text-align:center;padding:40px;color:var(--muted)">
+            <p>📸 Demo Preview</p>
+            <p style="font-size:12px;margin-top:12px">In production, this would show a live screenshot of the running browser.<br/>Here's a placeholder showing what the preview would look like.</p>
+            <div style="margin-top:20px;width:400px;height:300px;background:rgba(0,245,160,0.05);border:1px dashed rgba(0,245,160,0.2);border-radius:8px;margin-left:auto;margin-right:auto;display:flex;align-items:center;justify-content:center;font-size:64px">📷</div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      modal.querySelector('.preview-modal-close').onclick = ()=>modal.remove();
+      modal.onclick = (e)=>{ if(e.target===modal) modal.remove(); };
+    }
+
+    render();
+  </script>
+</body>
+</html>

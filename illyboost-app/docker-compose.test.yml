@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  agent:
+    build: ./agent
+    environment:
+      - BACKEND_HOST=host.docker.internal
+      - AGENT_SECRET=${AGENT_SECRET:-}
+    # use host.docker.internal so agents can reach host backend on mac/windows
+    restart: unless-stopped
+    deploy:
+      replicas: 1
+
+# Usage: `docker compose -f docker-compose.test.yml up --scale agent=3 --build`
