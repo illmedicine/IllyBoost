@@ -117,14 +117,21 @@ function Row({r, idx, onChange, selected, onSelect}){
 
 }
 
+// Initialize with 20 empty rows so UI is always visible
+const defaultRows = Array.from({length:20}, (_,i)=>({id:i+1,url:'',state:'idle',vm:null,bw:0}));
+
 export default function App(){
-  const [rows, setRows] = useState([])
+  const [rows, setRows] = useState(defaultRows)
   const [selected, setSelected] = useState(new Set())
+  const [backendStatus, setBackendStatus] = useState('connecting')
   const wsRef = useRef(null)
 
   useEffect(()=>{
     // initial fetch
-    fetchRows();
+    fetchRows().catch(e => {
+      console.error('Failed to fetch rows:', e);
+      setBackendStatus('offline');
+    });
     // connect to backend frontend WS for live updates
     try {
       let wsUrl;
@@ -140,10 +147,12 @@ export default function App(){
       }
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
+      ws.addEventListener('open', () => { setBackendStatus('connected'); });
       ws.addEventListener('message', (ev)=>{
         try{
           const msg = JSON.parse(ev.data);
           if (msg.type === 'rows'){
+            setBackendStatus('connected');
             if (msg.agents) {
               // attach agent ip info to rows for display
               const agents = msg.agents;
@@ -155,7 +164,8 @@ export default function App(){
           }
         }catch(e){}
       });
-      ws.addEventListener('close', ()=>{ console.warn('frontend ws closed'); wsRef.current = null; });
+      ws.addEventListener('error', () => { setBackendStatus('offline'); });
+      ws.addEventListener('close', ()=>{ console.warn('frontend ws closed'); wsRef.current = null; setBackendStatus('offline'); });
     } catch(e){ console.error('ws connect err', e); }
   },[])
 
@@ -200,6 +210,9 @@ export default function App(){
           <div>
             <h1>IllyBoost</h1>
             <p>Monitor per-URL bandwidth across guest VMs — select rows and click Run.</p>
+            <span className={`status-badge ${backendStatus}`}>
+              {backendStatus === 'connected' ? '● Connected' : backendStatus === 'connecting' ? '◌ Connecting...' : '○ Backend Offline'}
+            </span>
           </div>
           <div className="controls">
             <button className="btn" onClick={runSelected}>Run Selected</button>
