@@ -1,9 +1,13 @@
 import React, {useEffect, useState, useRef} from 'react'
 import axios from 'axios'
 
-const API = (import.meta && import.meta.env && import.meta.env.VITE_API)
+// Backend URL: use VITE_API env var, or fallback to deployed backend, or localhost for dev
+const DEPLOYED_BACKEND = 'https://ec2-98-92-177-248.compute-1.amazonaws.com:3001';
+const API = (import.meta?.env?.VITE_API && import.meta.env.VITE_API.startsWith('http'))
   ? import.meta.env.VITE_API
-  : (typeof window !== 'undefined' && window.location ? window.location.origin : 'http://localhost:3001')
+  : (typeof window !== 'undefined' && window.location?.hostname === 'localhost')
+    ? 'http://localhost:3001'
+    : DEPLOYED_BACKEND
 
 function formatBytes(b){
   if (!b) return '0 B';
@@ -124,12 +128,13 @@ export default function App(){
     // connect to backend frontend WS for live updates
     try {
       let wsUrl;
-      const apiUrl = (import.meta && import.meta.env && import.meta.env.VITE_API) ? import.meta.env.VITE_API : null;
-      if (apiUrl && apiUrl.startsWith('https://')) {
-        const u = new URL(apiUrl);
+      // Derive WS URL from API constant
+      if (API.startsWith('https://')) {
+        const u = new URL(API);
         wsUrl = 'wss://' + u.host + '/front';
-      } else if (typeof window !== 'undefined' && window.location && window.location.protocol === 'https:') {
-        wsUrl = 'wss://' + window.location.host + '/front';
+      } else if (API.startsWith('http://')) {
+        const u = new URL(API);
+        wsUrl = 'ws://' + u.host.replace(':3001', ':3003');
       } else {
         wsUrl = 'ws://localhost:3003';
       }
