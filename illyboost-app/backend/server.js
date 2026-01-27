@@ -5,9 +5,14 @@ const WebSocket = require('ws');
 const axios = require('axios');
 const AWS = require('aws-sdk');
 
+const path = require('path');
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
+
+// Serve static frontend files if present (same-origin deployment)
+const staticPath = process.env.STATIC_PATH || path.join(__dirname, 'public');
+app.use(express.static(staticPath));
 
 const PORT = process.env.PORT || 3001;
 const WS_PORT = process.env.WS_PORT || 3002;
