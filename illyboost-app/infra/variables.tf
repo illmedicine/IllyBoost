@@ -1,61 +1,47 @@
+variable "tenancy_ocid" {
+  type        = string
+  description = "Oracle Cloud Tenancy OCID"
+  sensitive   = true
+}
+
+variable "user_ocid" {
+  type        = string
+  description = "Oracle Cloud User OCID"
+  sensitive   = true
+}
+
+variable "fingerprint" {
+  type        = string
+  description = "Oracle Cloud API Key Fingerprint"
+  sensitive   = true
+}
+
+variable "private_key_path" {
+  type        = string
+  description = "Path to Oracle Cloud API private key"
+  default     = "~/.oci/oci_api_key.pem"
+}
+
 variable "region" {
-  type = string
-  default = "us-east-1"
-}
-
-variable "instance_count" {
-  type = number
-  default = 2
-}
-
-variable "instance_type" {
-  type = string
-  default = "t3.micro"
-}
-
-variable "create_backend" {
-  type        = bool
-  default     = true
-  description = "If true, provision a backend EC2 instance (TLS enabled) alongside agents."
-}
-
-variable "backend_instance_type" {
   type        = string
-  default     = "t3.micro"
-  description = "EC2 instance type for backend when create_backend=true."
+  description = "Oracle Cloud region"
+  default     = "us-ashburn-1"
 }
 
-variable "ssh_pub_key_path" {
-  type = string
-  default = "~/.ssh/id_rsa.pub"
-}
-
-variable "backend_ws" {
+variable "compartment_ocid" {
   type        = string
-  default     = ""
-  description = "Optional full WebSocket URL for agents (e.g., wss://backend.example.com:443/agents). If set, overrides backend_host."
+  description = "Oracle Cloud Compartment OCID"
+  sensitive   = true
 }
 
-variable "backend_host" {
-  type = string
-  default     = ""
-  description = "Public host or IP where the backend WS is reachable from agents. Optional when create_backend=true."
-}
-
-variable "allowed_cidr" {
-  type = string
-  default = "0.0.0.0/0"
-  description = "CIDR allowed to access SSH and agent ports. Tighten for production (e.g., your IP/32)."
-}
-
-variable "backend_public_cidr" {
+variable "ssh_public_key_path" {
   type        = string
-  default     = "0.0.0.0/0"
-  description = "CIDR allowed to access backend HTTPS port (3001). Tighten if only certain users should access the UI/API."
+  description = "Path to SSH public key"
+  default     = "~/.ssh/id_rsa.pub"
 }
 
-variable "agent_secret" {
-  type = string
-  default = ""
-  description = "Optional shared secret that agents send to the backend for simple authentication."
+variable "agent_count" {
+  type        = number
+  description = "Number of agent instances to create"
+  default     = 2
 }

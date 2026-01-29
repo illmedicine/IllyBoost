@@ -3,7 +3,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const WebSocket = require('ws');
 const axios = require('axios');
-const AWS = require('aws-sdk');
+// const AWS = require('aws-sdk'); // Optional for future AWS integration
 
 const path = require('path');
 const app = express();
@@ -21,8 +21,8 @@ const SSL_KEY_PATH = process.env.SSL_KEY_PATH || '';
 const SSL_CERT_PATH = process.env.SSL_CERT_PATH || '';
 
 // In-memory store for URL rows and agent connections
-let urlRows = Array.from({length:20}, (_,i)=>({id:i+1,url:'',state:'idle',vm:null,bw:0,screenshot:null,screenshotTime:null}));
-// agents: agentId -> { ws, ip }
+let urlRows = Array.from({length:20}, (_,i)=>({id:i+1,url:'',state:'idle',error:null,vm:null,bw:0,screenshot:null,screenshotTime:null}));
+// agents: agentId -> { ws, ip, publicIp }
 let agents = {};
 let frontClients = new Set();
 
@@ -52,7 +52,13 @@ function setupPlainWS() {
   wssFront.on('connection', (ws) => {
     console.log('Frontend connected to WS');
     frontClients.add(ws);
-    try { ws.send(JSON.stringify({type:'rows', rows: urlRows})); } catch(e){}
+    try {
+      const agentInfos = {};
+      for (const [id, obj] of Object.entries(agents)) {
+        agentInfos[id] = obj && obj.ip ? obj.ip : null;
+      }
+      ws.send(JSON.stringify({type:'rows', rows: urlRows, agents: agentInfos}));
+    } catch(e){}
     ws.on('close', ()=>{ frontClients.delete(ws); console.log('Frontend disconnected'); });
   });
 }
@@ -74,8 +80,10 @@ function handleAgentConnection(ws, req) {
           try { ws.close(); } catch(e){}
           return;
         }
-        agents[agentId] = { ws: ws, ip: remoteIp };
-        console.log('Registered agent', agentId, 'ip=', remoteIp);
+        const reportedIp = msg.publicIp || remoteIp;
+        agents[agentId] = { ws: ws, ip: reportedIp, lastSeen: Date.now() };
+        console.log('Registered agent', agentId, 'ip=', reportedIp);
+        broadcastRows();
       }
       if (msg.type === 'bandwidth') {
         const { agentId, rowId, bytesPerSec } = msg;
@@ -83,8 +91,21 @@ function handleAgentConnection(ws, req) {
         if (row) {
           row.bw = bytesPerSec;
           row.state = 'running';
+          row.error = null;
           row.vm = agentId;
         }
+        if (agents[agentId]) agents[agentId].lastSeen = Date.now();
+        broadcastRows();
+      }
+      if (msg.type === 'status') {
+        const { agentId, rowId, state, error } = msg;
+        const row = urlRows.find(r=>r.id===rowId);
+        if (row) {
+          if (state) row.state = state;
+          row.error = error || null;
+          if (agentId) row.vm = agentId;
+        }
+        if (agents[agentId]) agents[agentId].lastSeen = Date.now();
         broadcastRows();
       }
       if (msg.type === 'render') {
@@ -94,6 +115,7 @@ function handleAgentConnection(ws, req) {
           row.render = html;
           row.renderTime = Date.now();
         }
+        if (agentId && agents[agentId]) agents[agentId].lastSeen = Date.now();
         // notify frontends of updated rows
         broadcastRows();
       }
@@ -104,6 +126,7 @@ function handleAgentConnection(ws, req) {
           row.screenshot = data;  // base64 encoded PNG
           row.screenshotTime = Date.now();
         }
+        if (agentId && agents[agentId]) agents[agentId].lastSeen = Date.now();
         broadcastRows();
       }
     } catch (e) { console.error('ws message parse err', e); }
@@ -116,6 +139,10 @@ function handleAgentConnection(ws, req) {
 }
 
 // REST API
+app.get('/health', (req,res)=>{
+  res.json({status: 'online', agents: Object.keys(agents).length, rows: urlRows.length});
+});
+
 app.get('/rows', (req,res)=>{
   res.json(urlRows);
 });
@@ -136,12 +163,31 @@ app.post('/run', async (req,res)=>{
   const agentIds = Object.keys(agents);
   if (agentIds.length === 0) return res.status(500).json({error:'No agents connected. Provision VMs then start agent.'});
 
+  if (!Array.isArray(rowIds) || rowIds.length === 0) {
+    return res.status(400).json({error:'rowIds must be a non-empty array'});
+  }
+
   console.log('POST /run: rowIds=', rowIds, 'available agents=', agentIds);
 
   // assign agents round-robin
   rowIds.forEach((rowId, idx)=>{
     const row = urlRows.find(r=>r.id===rowId);
     if (!row) return;
+
+    if (!row.url || typeof row.url !== 'string' || row.url.trim().length === 0) {
+      row.state = 'error';
+      row.error = 'Missing URL';
+      return;
+    }
+    try {
+      // basic validation; will throw if invalid
+      new URL(row.url);
+    } catch (e) {
+      row.state = 'error';
+      row.error = 'Invalid URL';
+      return;
+    }
+
     const agentId = agentIds[idx % agentIds.length];
     const agent = agents[agentId];  // agents[id] = { ws, ip }
     console.log('  assigning row', rowId, 'url=', row.url, 'to agent', agentId, 'agent=', agent ? 'found' : 'not found');
@@ -149,11 +195,16 @@ app.post('/run', async (req,res)=>{
       console.log('  sending open message to agent', agentId);
       agent.ws.send(JSON.stringify({type:'open', rowId: rowId, url: row.url}));
       row.state = 'starting';
+      row.error = null;
       row.vm = agentId;
     } else {
       console.log('  agent not ready: agent=', !!agent, 'ws=', agent ? !!agent.ws : 'N/A', 'readyState=', agent && agent.ws ? agent.ws.readyState : 'N/A');
+      row.state = 'error';
+      row.error = 'Agent not ready';
     }
   });
+
+  broadcastRows();
 
   res.json({ok:true});
 });
@@ -200,7 +251,13 @@ if (SSL_KEY_PATH && SSL_CERT_PATH && fs.existsSync(SSL_KEY_PATH) && fs.existsSyn
   wssFront.on('connection', (ws) => {
     console.log('Frontend connected to WS (secure)');
     frontClients.add(ws);
-    try { ws.send(JSON.stringify({type:'rows', rows: urlRows})); } catch(e){}
+    try {
+      const agentInfos = {};
+      for (const [id, obj] of Object.entries(agents)) {
+        agentInfos[id] = obj && obj.ip ? obj.ip : null;
+      }
+      ws.send(JSON.stringify({type:'rows', rows: urlRows, agents: agentInfos}));
+    } catch(e){}
     ws.on('close', ()=>{ frontClients.delete(ws); console.log('Frontend disconnected'); });
   });
 

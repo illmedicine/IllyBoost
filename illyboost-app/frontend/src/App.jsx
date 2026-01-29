@@ -40,6 +40,15 @@ function Row({r, idx, onChange, selected, onSelect}){
   const [previewData, setPreviewData] = React.useState(null);
   const [previewLoading, setPreviewLoading] = React.useState(false);
 
+  const hasLiveScreenshot = !!(r && r.screenshot);
+  const liveScreenshotSrc = hasLiveScreenshot ? ('data:image/png;base64,' + r.screenshot) : null;
+
+  function openLivePreview() {
+    if (!hasLiveScreenshot) return;
+    setPreviewData({ screenshot: r.screenshot, time: r.screenshotTime });
+    setPreviewOpen(true);
+  }
+
   async function openPreview() {
     setPreviewLoading(true);
     try {
@@ -87,8 +96,18 @@ function Row({r, idx, onChange, selected, onSelect}){
       <div className="vm">
         <span className={`status-dot ${active? 'pulse active':''}`}></span>
         {r.vm? `${r.vm}${r.vmIp? ' ('+r.vmIp+')':''}` : '-'}
+        <div style={{marginTop:6, fontSize:12, color: r.state === 'error' ? '#ff6b6b' : 'rgba(255,255,255,0.6)'}}>
+          {r.state || 'idle'}{r.error ? `: ${r.error}` : ''}
+        </div>
+
+        {hasLiveScreenshot && (
+          <div className="thumb-wrap" onClick={openLivePreview} title="Click to enlarge">
+            <img className="thumb" src={liveScreenshotSrc} alt="Live preview" />
+          </div>
+        )}
+
         <div style={{marginTop:6, display:'flex', gap:'6px'}}>
-          <button className="btn small preview-btn" onClick={openPreview} disabled={previewLoading || !r.vm}>
+          <button className="btn small preview-btn" onClick={openPreview} disabled={previewLoading || !r.vm || r.state === 'error'}>
             {previewLoading ? '⏳' : '📸'}
           </button>
           <button className="btn small" onClick={()=>window.open(new URL('./__view?row='+r.id, window.location.href).toString(), '_blank')}>View</button>
@@ -124,6 +143,7 @@ export default function App(){
   const [rows, setRows] = useState(defaultRows)
   const [selected, setSelected] = useState(new Set())
   const [backendStatus, setBackendStatus] = useState('connecting')
+  const [backendStarting, setBackendStarting] = useState(false)
   const wsRef = useRef(null)
 
   useEffect(()=>{
@@ -174,6 +194,50 @@ export default function App(){
     setRows(res.data);
   }
 
+  async function connectToBackend(){
+    setBackendStarting(true);
+    try {
+      const maxAttempts = 30;
+      let attempt = 0;
+      
+      const checkHealth = async () => {
+        try {
+          const res = await axios.get(API + '/health', { timeout: 2000 });
+          if (res.status === 200) {
+            setBackendStatus('connected');
+            setBackendStarting(false);
+            await fetchRows();
+            return true;
+          }
+        } catch (e) {
+          // backend not yet online
+        }
+        return false;
+      };
+
+      // Quick check if already online
+      if (await checkHealth()) {
+        return;
+      }
+
+      // Poll for backend to come online
+      while (attempt < maxAttempts && !await checkHealth()) {
+        attempt++;
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      if (attempt >= maxAttempts) {
+        alert('Could not connect to backend. Please verify the Oracle VMs are running and the backend is online.');
+        setBackendStatus('offline');
+      }
+    } catch (e) {
+      console.error('Error connecting to backend:', e);
+      alert('Failed to connect to backend.');
+    } finally {
+      setBackendStarting(false);
+    }
+  }
+
   function onChange(id, url){
     const newRows = rows.map(r=> r.id===id? {...r,url}:r);
     setRows(newRows);
@@ -210,9 +274,12 @@ export default function App(){
           <div>
             <h1>IllyBoost</h1>
             <p>Monitor per-URL bandwidth across guest VMs — select rows and click Run.</p>
-            <span className={`status-badge ${backendStatus}`}>
-              {backendStatus === 'connected' ? '● Connected' : backendStatus === 'connecting' ? '◌ Connecting...' : '○ Backend Offline'}
-            </span>
+            <div style={{display:'flex', alignItems:'center', gap:'12px', marginTop:'6px'}}>
+              <button className={`status-button ${backendStatus}`} onClick={connectToBackend} disabled={backendStarting}>
+                {backendStarting ? '⟳ Connecting...' : backendStatus === 'connected' ? '● Connected' : backendStatus === 'connecting' ? '◌ Connecting...' : '○ Connect Backend'}
+              </button>
+              {backendStatus === 'connected' && <span className="backend-ready-hint">✓ Oracle VMs online — you can run URLs</span>}
+            </div>
           </div>
           <div className="controls">
             <button className="btn" onClick={runSelected}>Run Selected</button>

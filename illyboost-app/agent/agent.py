@@ -37,6 +37,16 @@ proc = None
 ws = None
 
 
+def get_public_ip():
+    try:
+        with urllib.request.urlopen('https://api.ipify.org?format=json', timeout=5) as resp:
+            data = json.loads(resp.read().decode('utf-8', errors='replace'))
+            ip = data.get('ip')
+            return ip
+    except Exception:
+        return None
+
+
 def send(msg):
     try:
         if ws:
@@ -133,6 +143,7 @@ def on_message(_, message):
         print('open', rowId, url)
         current_row = rowId
         current_url = url
+        send({'type': 'status', 'agentId': AGENT_ID, 'rowId': rowId, 'state': 'starting', 'error': None})
         # Launch Chrome (non-headless recommended in VM) best-effort
         try:
             kill_proc()
@@ -142,8 +153,10 @@ def on_message(_, message):
             user_data = f"/tmp/illy-{AGENT_ID}-{rowId}"
             cmd = ['google-chrome', '--no-sandbox', '--disable-gpu', '--user-data-dir=' + user_data, url]
             proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            send({'type': 'status', 'agentId': AGENT_ID, 'rowId': rowId, 'state': 'running', 'error': None})
         except Exception as e:
             print('failed launching chrome', e)
+            send({'type': 'status', 'agentId': AGENT_ID, 'rowId': rowId, 'state': 'error', 'error': str(e)})
             # Try to fetch the page HTML and send it back to backend for viewing (best-effort)
             try:
                 try:
@@ -163,6 +176,9 @@ def on_open(wsapp):
     print('connected to backend ws')
     secret = os.environ.get('AGENT_SECRET')
     hello = {'type': 'hello', 'agentId': AGENT_ID}
+    public_ip = get_public_ip()
+    if public_ip:
+        hello['publicIp'] = public_ip
     if secret:
         hello['secret'] = secret
     send(hello)

@@ -69,6 +69,11 @@ header p{color:var(--muted);font-size:13px;margin-top:6px}
 .preview-btn:hover{background:rgba(0,245,160,0.2);border-color:var(--accent1)}
 .preview-btn.loading{opacity:0.6;cursor:wait}
 
+/* Live thumbnail in row */
+.thumb-wrap{margin-top:8px;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.12);background:rgba(0,0,0,0.25);cursor:pointer}
+.thumb{display:block;width:100%;max-width:180px;aspect-ratio:16/9;object-fit:cover;filter:saturate(1.05) contrast(1.05)}
+.thumb-wrap:hover{border-color:rgba(0,245,160,0.35);box-shadow:0 10px 30px rgba(0,245,160,0.06)}
+
 .preview-modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center}
 .preview-modal.active{display:flex}
 .preview-modal-content{background:linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));border-radius:16px;padding:20px;max-width:90vw;max-height:90vh;overflow:auto;border:1px solid rgba(255,255,255,0.1);box-shadow:0 20px 60px rgba(0,0,0,0.6);position:relative}
@@ -79,10 +84,23 @@ header p{color:var(--muted);font-size:13px;margin-top:6px}
 .preview-loading{color:var(--muted);padding:40px;text-align:center}
 .preview-error{color:#ff6b6b;padding:20px;text-align:center;font-size:13px}
 
-/* Backend status badge */
+/* Backend status badge and button */
 .status-badge{display:inline-block;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;margin-top:6px}
 .status-badge.connected{background:rgba(0,245,160,0.15);color:var(--accent1)}
 .status-badge.connecting{background:rgba(124,58,237,0.15);color:var(--accent2);animation:pulse-text 1.5s infinite}
 .status-badge.offline{background:rgba(255,107,107,0.15);color:#ff6b6b}
+
+/* Status button - clickable version */
+.status-button{display:inline-block;padding:8px 14px;border-radius:10px;font-size:12px;font-weight:600;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:var(--muted);cursor:pointer;transition:all 150ms;white-space:nowrap}
+.status-button:hover:not(:disabled){background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.15)}
+.status-button:disabled{opacity:0.6;cursor:wait}
+.status-button.connected{background:rgba(0,245,160,0.12);border-color:rgba(0,245,160,0.3);color:var(--accent1)}
+.status-button.connecting{background:rgba(124,58,237,0.12);border-color:rgba(124,58,237,0.3);color:var(--accent2);animation:pulse-text 1.5s infinite}
+.status-button.offline{background:rgba(255,107,107,0.12);border-color:rgba(255,107,107,0.3);color:#ff6b6b}
+.status-button.offline:hover:not(:disabled){background:rgba(255,107,107,0.2);border-color:#ff6b6b}
+
+/* Backend ready hint text */
+.backend-ready-hint{font-size:12px;color:var(--accent1);font-weight:500;animation:fadeInUp 400ms ease both}
+
 @keyframes pulse-text{0%,100%{opacity:1}50%{opacity:0.5}}
 

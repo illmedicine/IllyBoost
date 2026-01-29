@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test:e2e": "node test-runner.js"
   },
   "dependencies": {
     "aws-sdk": "^2.1360.0",

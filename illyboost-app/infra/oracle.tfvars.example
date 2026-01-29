@@ -1,0 +1,26 @@
+# Oracle Cloud Configuration for IllyBoost
+# Get these values from your Oracle Cloud Console
+
+# Your Tenancy OCID (from My Profile → Tenancy Information)
+tenancy_ocid = "REPLACE_WITH_YOUR_TENANCY_OCID"
+
+# Your User OCID (from My Profile → User Settings)
+user_ocid = "REPLACE_WITH_YOUR_USER_OCID"
+
+# Your API Key Fingerprint (from My Profile → API Keys)
+fingerprint = "REPLACE_WITH_YOUR_FINGERPRINT"
+
+# Path to your private key file
+private_key_path = "~/.oci/oci_api_key.pem"
+
+# Oracle Cloud Region (us-ashburn-1 or us-phoenix-1 for free tier)
+region = "us-ashburn-1"
+
+# Your Compartment OCID (from Identity → Compartments)
+compartment_ocid = "REPLACE_WITH_YOUR_COMPARTMENT_OCID"
+
+# Path to your SSH public key
+ssh_public_key_path = "~/.ssh/id_rsa.pub"
+
+# Number of agent instances (2 = free tier, more = paid)
+agent_count = 2

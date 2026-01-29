@@ -1,107 +1,215 @@
 terraform {
   required_providers {
-    aws = {
-      source  = "hashicorp/aws"
+    oci = {
+      source  = "oracle/oci"
       version = "~> 5.0"
     }
   }
 }
 
-provider "aws" {
-  region = var.region
+provider "oci" {
+  tenancy_ocid     = var.tenancy_ocid
+  user_ocid        = var.user_ocid
+  fingerprint      = var.fingerprint
+  private_key_path = var.private_key_path
+  region           = var.region
 }
 
-locals {
-  backend_host_effective = var.create_backend ? try(aws_instance.backend[0].public_dns, "") : var.backend_host
-  backend_ws_effective   = var.backend_ws != "" ? var.backend_ws : (var.create_backend ? "wss://${local.backend_host_effective}:3001/agents" : "")
+# Get available AZs
+data "oci_identity_availability_domains" "ads" {
+  compartment_id = var.compartment_ocid
 }
 
-resource "aws_key_pair" "deployer" {
-  key_name   = "illyboost-key"
-  public_key = file(var.ssh_pub_key_path)
+# Get Ubuntu 22.04 image
+data "oci_core_images" "ubuntu" {
+  compartment_id           = var.compartment_ocid
+  operating_system         = "Canonical Ubuntu"
+  operating_system_version = "22.04"
+  shape                    = "VM.Standard.A1.Flex"
+  sort_by                  = "TIMECREATED"
+  sort_order               = "DESC"
 }
 
-resource "aws_security_group" "ssh_http" {
-  name        = "illyboost-sg"
-  description = "Allow ssh and outbound"
-
-  ingress {
-    description = "SSH"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [var.allowed_cidr]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+# VCN
+resource "oci_core_virtual_network" "illyboost_vcn" {
+  compartment_id = var.compartment_ocid
+  display_name   = "illyboost-vcn"
+  cidr_blocks    = ["10.0.0.0/16"]
 }
 
-resource "aws_security_group" "backend" {
-  name        = "illyboost-backend-sg"
-  description = "Backend TLS (3001) + ssh"
+# Internet Gateway
+resource "oci_core_internet_gateway" "illyboost_igw" {
+  compartment_id = var.compartment_ocid
+  vcn_id         = oci_core_virtual_network.illyboost_vcn.id
+  enabled        = true
+  display_name   = "illyboost-igw"
+}
 
-  ingress {
-    description = "SSH"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = [var.allowed_cidr]
-  }
+# Route Table
+resource "oci_core_route_table" "illyboost_rt" {
+  compartment_id = var.compartment_ocid
+  vcn_id         = oci_core_virtual_network.illyboost_vcn.id
+  display_name   = "illyboost-rt"
 
-  ingress {
-    description = "Backend HTTPS+WSS"
-    from_port   = 3001
-    to_port     = 3001
-    protocol    = "tcp"
-    cidr_blocks = [var.backend_public_cidr]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+  route_rules {
+    destination       = "0.0.0.0/0"
+    destination_type  = "CIDR_BLOCK"
+    network_entity_id = oci_core_internet_gateway.illyboost_igw.id
   }
 }
 
-resource "aws_instance" "backend" {
-  count         = var.create_backend ? 1 : 0
-  ami           = data.aws_ami.ubuntu.id
-  instance_type = var.backend_instance_type
-  key_name      = aws_key_pair.deployer.key_name
-  vpc_security_group_ids = [aws_security_group.backend.id]
+# Subnet
+resource "oci_core_subnet" "illyboost_subnet" {
+  compartment_id      = var.compartment_ocid
+  vcn_id              = oci_core_virtual_network.illyboost_vcn.id
+  cidr_block          = "10.0.1.0/24"
+  display_name        = "illyboost-subnet"
+  route_table_id      = oci_core_route_table.illyboost_rt.id
+}
 
-  user_data = templatefile("user_data_backend.sh.tpl", { agent_secret = var.agent_secret })
+# Network Security Group
+resource "oci_core_network_security_group" "illyboost_nsg" {
+  compartment_id = var.compartment_ocid
+  vcn_id         = oci_core_virtual_network.illyboost_vcn.id
+  display_name   = "illyboost-nsg"
+}
 
-  tags = {
-    Name = "illyboost-backend"
+# NSG Rules - SSH
+resource "oci_core_network_security_group_security_rule" "ssh" {
+  network_security_group_id = oci_core_network_security_group.illyboost_nsg.id
+  direction                 = "INGRESS"
+  protocol                  = "6"
+  source                    = "0.0.0.0/0"
+  stateless                 = false
+  
+  tcp_options {
+    destination_port_range {
+      min = 22
+      max = 22
+    }
   }
 }
 
-resource "aws_instance" "agent" {
-  count         = var.instance_count
-  ami           = data.aws_ami.ubuntu.id
-  instance_type = var.instance_type
-  key_name      = aws_key_pair.deployer.key_name
-  vpc_security_group_ids = [aws_security_group.ssh_http.id]
-
-  user_data = templatefile("user_data.sh.tpl", { backend_host = local.backend_host_effective, backend_ws = local.backend_ws_effective, agent_id = "agent-${count.index+1}", agent_secret = var.agent_secret })
-
-  tags = {
-    Name = "illyboost-agent-${count.index+1}"
+# NSG Rules - Backend API (3001)
+resource "oci_core_network_security_group_security_rule" "backend_api" {
+  network_security_group_id = oci_core_network_security_group.illyboost_nsg.id
+  direction                 = "INGRESS"
+  protocol                  = "6"
+  source                    = "0.0.0.0/0"
+  stateless                 = false
+  
+  tcp_options {
+    destination_port_range {
+      min = 3001
+      max = 3001
+    }
   }
 }
 
-data "aws_ami" "ubuntu" {
-  most_recent = true
-  owners      = ["099720109477"] # canonical
-  filter {
-    name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
+# NSG Rules - Agent WebSocket (3002)
+resource "oci_core_network_security_group_security_rule" "agent_ws" {
+  network_security_group_id = oci_core_network_security_group.illyboost_nsg.id
+  direction                 = "INGRESS"
+  protocol                  = "6"
+  source                    = "0.0.0.0/0"
+  stateless                 = false
+  
+  tcp_options {
+    destination_port_range {
+      min = 3002
+      max = 3002
+    }
   }
+}
+
+# NSG Rules - Frontend WebSocket (3003)
+resource "oci_core_network_security_group_security_rule" "frontend_ws" {
+  network_security_group_id = oci_core_network_security_group.illyboost_nsg.id
+  direction                 = "INGRESS"
+  protocol                  = "6"
+  source                    = "0.0.0.0/0"
+  stateless                 = false
+  
+  tcp_options {
+    destination_port_range {
+      min = 3003
+      max = 3003
+    }
+  }
+}
+
+# NSG Rules - Egress (allow all)
+resource "oci_core_network_security_group_security_rule" "egress" {
+  network_security_group_id = oci_core_network_security_group.illyboost_nsg.id
+  direction                 = "EGRESS"
+  protocol                  = "all"
+  destination               = "0.0.0.0/0"
+  stateless                 = false
+}
+
+# Backend Instance
+resource "oci_core_instance" "backend" {
+  availability_domain = data.oci_identity_availability_domains.ads.availability_domains[0].name
+  compartment_id      = var.compartment_ocid
+  display_name        = "illyboost-backend"
+  shape               = "VM.Standard.A1.Flex"
+
+  shape_config {
+    ocpus         = 2
+    memory_in_gbs = 12
+  }
+
+  create_vnic_details {
+    subnet_id              = oci_core_subnet.illyboost_subnet.id
+    nsg_ids                = [oci_core_network_security_group.illyboost_nsg.id]
+    assign_public_ip       = true
+  }
+
+  source_details {
+    source_type = "IMAGE"
+    source_id   = data.oci_core_images.ubuntu.images[0].id
+  }
+
+  metadata = {
+    ssh_authorized_keys = file(var.ssh_public_key_path)
+    user_data           = base64encode(file("${path.module}/user_data_backend.sh"))
+  }
+
+  depends_on = [oci_core_internet_gateway.illyboost_igw]
+}
+
+# Agent Instances
+resource "oci_core_instance" "agent" {
+  count = var.agent_count
+
+  availability_domain = data.oci_identity_availability_domains.ads.availability_domains[count.index % length(data.oci_identity_availability_domains.ads.availability_domains)].name
+  compartment_id      = var.compartment_ocid
+  display_name        = "illyboost-agent-${count.index + 1}"
+  shape               = "VM.Standard.A1.Flex"
+
+  shape_config {
+    ocpus         = 2
+    memory_in_gbs = 12
+  }
+
+  create_vnic_details {
+    subnet_id              = oci_core_subnet.illyboost_subnet.id
+    nsg_ids                = [oci_core_network_security_group.illyboost_nsg.id]
+    assign_public_ip       = true
+  }
+
+  source_details {
+    source_type = "IMAGE"
+    source_id   = data.oci_core_images.ubuntu.images[0].id
+  }
+
+  metadata = {
+    ssh_authorized_keys = file(var.ssh_public_key_path)
+    user_data           = base64encode(templatefile("${path.module}/user_data_agent.sh", {
+      backend_host = oci_core_instance.backend.public_ip
+      agent_id     = "agent-${count.index + 1}"
+    }))
+  }
+
+  depends_on = [oci_core_instance.backend]
 }
