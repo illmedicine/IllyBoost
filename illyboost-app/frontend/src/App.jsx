@@ -272,7 +272,7 @@ export default function App(){
       <div className="card">
         <header>
           <div>
-            <h1>IllyBoost</h1>
+            <h1>illy boost</h1>
             <p>Monitor per-URL bandwidth across guest VMs — select rows and click Run.</p>
             <div style={{display:'flex', alignItems:'center', gap:'12px', marginTop:'6px'}}>
               <button className={`status-button ${backendStatus}`} onClick={connectToBackend} disabled={backendStarting}>
