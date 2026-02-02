@@ -220,7 +220,7 @@ const API = 'https://your-backend.com'  // Production
 - Check Node.js version: `node --version` (should be v18+)
 
 **Frontend won't connect?**
-- Check backend is running: `curl http://localhost:3001/rows`
+- Check backend is running: `curl http://localhost:3001/health`
 - Check API URL in `App.jsx` line 3
 - Check browser console for WebSocket errors (F12)
 
@@ -234,6 +234,11 @@ const API = 'https://your-backend.com'  // Production
 - Local Docker agents may not support screenshots (no display)
 - Check agent logs for screenshot errors
 
+**Oracle Cloud / Production Connectivity Issues?**
+- See comprehensive guide: [ORACLE_TROUBLESHOOTING.md](ORACLE_TROUBLESHOOTING.md)
+- Common issues: backend bound to localhost, firewall rules, CORS configuration
+- **Quick fix:** Start backend with `HOST=0.0.0.0 node server.js`
+
 ## Security Notes
 
 - Screenshots contain page content - implement proper access controls
@@ -241,13 +246,15 @@ const API = 'https://your-backend.com'  // Production
 - Enable AGENT_SECRET for agent authentication
 - Restrict security groups to limit access
 - Don't expose backend directly to internet without authentication
+- Backend binds to `0.0.0.0` by default for cloud deployment
 
 ## Next Steps
 
 1. **Local Testing:** Follow "Quick Start" above
 2. **Docker Testing:** Run with `docker compose` for multi-agent simulation
 3. **Production:** Follow [PRODUCTION_SETUP.md](PRODUCTION_SETUP.md)
-4. **Scaling:** See "Scaling Considerations" in PRODUCTION_SETUP.md
+4. **Oracle Cloud:** See [ORACLE_CLOUD_DEPLOYMENT.md](ORACLE_CLOUD_DEPLOYMENT.md)
+5. **Troubleshooting:** See [ORACLE_TROUBLESHOOTING.md](ORACLE_TROUBLESHOOTING.md)
 
 ## License & Support
 

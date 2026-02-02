@@ -7,13 +7,30 @@ const axios = require('axios');
 
 const path = require('path');
 const app = express();
-app.use(cors());
+
+// CORS configuration - allow GitHub Pages and local development
+const corsOptions = {
+  origin: [
+    'http://localhost:5173',           // Local Vite dev server
+    'http://localhost:3000',           // Alternative dev port
+    'http://localhost:8080',           // Another common dev port
+    'https://illmedicine.github.io'    // GitHub Pages production
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
 app.use(bodyParser.json());
 
 // Serve static frontend files if present (same-origin deployment)
 const staticPath = process.env.STATIC_PATH || path.join(__dirname, 'public');
 app.use(express.static(staticPath));
 
+// Network configuration
+// HOST defaults to '0.0.0.0' to allow external access (required for cloud deployments)
+// For local-only development, set HOST=localhost or HOST=127.0.0.1
+const HOST = process.env.HOST || '0.0.0.0';
 const PORT = process.env.PORT || 3001;
 const WS_PORT = process.env.WS_PORT || 3002;
 const FRONT_WS_PORT = process.env.FRONT_WS_PORT || 3003;
@@ -43,12 +60,12 @@ function broadcastRows() {
 let wssAgents, wssFront;
 
 function setupPlainWS() {
-  wssAgents = new WebSocket.Server({ port: WS_PORT });
+  wssAgents = new WebSocket.Server({ port: WS_PORT, host: HOST });
   wssAgents.on('connection', (ws, req) => {
     handleAgentConnection(ws, req);
   });
 
-  wssFront = new WebSocket.Server({ port: FRONT_WS_PORT });
+  wssFront = new WebSocket.Server({ port: FRONT_WS_PORT, host: HOST });
   wssFront.on('connection', (ws) => {
     console.log('Frontend connected to WS');
     frontClients.add(ws);
@@ -261,12 +278,12 @@ if (SSL_KEY_PATH && SSL_CERT_PATH && fs.existsSync(SSL_KEY_PATH) && fs.existsSyn
     ws.on('close', ()=>{ frontClients.delete(ws); console.log('Frontend disconnected'); });
   });
 
-  server.listen(PORT, ()=>console.log('Backend HTTPS and WSS listening on', PORT));
+  server.listen(PORT, HOST, ()=>console.log(`Backend HTTPS and WSS listening on ${HOST}:${PORT}`));
   console.log('Secure agent WSS path: /agents, frontend WSS path: /front');
 } else {
   // start plain HTTP REST
-  app.listen(PORT, ()=>console.log('Backend API listening', PORT));
-  console.log('Agent WS server listening on', WS_PORT);
-  console.log('Frontend WS server listening on', FRONT_WS_PORT);
+  app.listen(PORT, HOST, ()=>console.log(`Backend API listening on ${HOST}:${PORT}`));
+  console.log(`Agent WS server listening on ${HOST}:${WS_PORT}`);
+  console.log(`Frontend WS server listening on ${HOST}:${FRONT_WS_PORT}`);
   setupPlainWS();
 }
