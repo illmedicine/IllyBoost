@@ -162,7 +162,7 @@ def on_message(_, message):
             for binary in chrome_binaries:
                 try:
                     # Check if binary exists
-                    result = subprocess.run(['which', binary], capture_output=True, timeout=5)
+                    result = subprocess.run(['which', binary], capture_output=True, timeout=2)
                     if result.returncode == 0:
                         chrome_cmd = binary
                         print(f'Found browser: {binary}')

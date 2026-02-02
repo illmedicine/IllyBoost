@@ -25,6 +25,7 @@ const BACKEND_HOST = process.env.BACKEND_HOST || 'localhost';
 const API_PORT = process.env.API_PORT || 3001;
 const AGENT_WS_PORT = process.env.AGENT_WS_PORT || 3002;
 const FRONTEND_WS_PORT = process.env.FRONTEND_WS_PORT || 3003;
+const DEFAULT_TIMEOUT_MS = 10000;
 
 // Random test URLs
 const TEST_URLS = [
@@ -68,7 +69,7 @@ function httpRequest(method, path, body = null) {
       path: path,
       method: method,
       headers: { 'Content-Type': 'application/json' },
-      timeout: 10000,
+      timeout: DEFAULT_TIMEOUT_MS,
     };
 
     const req = http.request(options, (res) => {
@@ -104,7 +105,7 @@ function connectWS(port, label) {
     const timeout = setTimeout(() => {
       ws.close();
       reject(new Error(`${label} WebSocket connection timeout`));
-    }, 10000);
+    }, DEFAULT_TIMEOUT_MS);
     
     ws.on('open', () => {
       clearTimeout(timeout);
