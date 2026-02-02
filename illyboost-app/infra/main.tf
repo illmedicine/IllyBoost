@@ -138,6 +138,22 @@ resource "oci_core_network_security_group_security_rule" "frontend_ws" {
   }
 }
 
+# NSG Rules - RDP (3389)
+resource "oci_core_network_security_group_security_rule" "rdp" {
+  network_security_group_id = oci_core_network_security_group.illyboost_nsg.id
+  direction                 = "INGRESS"
+  protocol                  = "6"
+  source                    = var.rdp_allowed_cidr
+  stateless                 = false
+  
+  tcp_options {
+    destination_port_range {
+      min = 3389
+      max = 3389
+    }
+  }
+}
+
 # NSG Rules - Egress (allow all)
 resource "oci_core_network_security_group_security_rule" "egress" {
   network_security_group_id = oci_core_network_security_group.illyboost_nsg.id
@@ -172,7 +188,9 @@ resource "oci_core_instance" "backend" {
 
   metadata = {
     ssh_authorized_keys = file(var.ssh_public_key_path)
-    user_data           = base64encode(file("${path.module}/user_data_backend.sh"))
+    user_data           = base64encode(templatefile("${path.module}/user_data_backend.sh", {
+      rdp_password = var.rdp_password
+    }))
   }
 
   depends_on = [oci_core_internet_gateway.illyboost_igw]
@@ -208,6 +226,7 @@ resource "oci_core_instance" "agent" {
     user_data           = base64encode(templatefile("${path.module}/user_data_agent.sh", {
       backend_host = oci_core_instance.backend.public_ip
       agent_id     = "agent-${count.index + 1}"
+      rdp_password = var.rdp_password
     }))
   }
 

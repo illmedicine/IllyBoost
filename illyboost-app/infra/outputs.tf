@@ -27,3 +27,13 @@ output "ssh_commands_agents" {
   description = "SSH commands to connect to agents"
   value       = [for i, instance in oci_core_instance.agent : "ssh ubuntu@${instance.public_ip} # agent-${i + 1}"]
 }
+
+output "rdp_connection_backend" {
+  description = "RDP connection address for backend (username: ubuntu)"
+  value       = "${oci_core_instance.backend.public_ip}:3389"
+}
+
+output "rdp_connections_agents" {
+  description = "RDP connection addresses for agents (username: ubuntu)"
+  value       = [for i, instance in oci_core_instance.agent : "${instance.public_ip}:3389 # agent-${i + 1}"]
+}

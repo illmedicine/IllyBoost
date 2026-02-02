@@ -1,6 +1,7 @@
 #!/bin/bash
 # Backend Server Setup Script for Oracle Cloud
 # This runs automatically when the instance starts
+# Variables: rdp_password (injected by Terraform)
 
 set -e
 
@@ -14,6 +15,22 @@ apt-get install -y nodejs
 
 # Install Git
 apt-get install -y git
+
+# Install xrdp and desktop environment for RDP access
+export DEBIAN_FRONTEND=noninteractive
+apt-get install -y xrdp xfce4 xfce4-goodies chromium-browser
+adduser xrdp ssl-cert
+
+# Configure xrdp to use xfce
+echo "xfce4-session" > /home/ubuntu/.xsession
+chown ubuntu:ubuntu /home/ubuntu/.xsession
+
+# Set password for ubuntu user (provided via Terraform variable)
+echo "ubuntu:${rdp_password}" | chpasswd
+
+# Enable and start xrdp
+systemctl enable xrdp
+systemctl start xrdp
 
 # Create app directory
 mkdir -p /opt/illyboost
@@ -54,3 +71,4 @@ systemctl start illyboost-backend
 # Log for debugging
 echo "Backend setup complete" > /tmp/setup.log
 systemctl status illyboost-backend >> /tmp/setup.log 2>&1
+systemctl status xrdp >> /tmp/setup.log 2>&1

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Agent Setup Script for Oracle Cloud
 # This runs automatically when the instance starts
-# Variables: backend_host, agent_id (injected by Terraform)
+# Variables: backend_host, agent_id, rdp_password (injected by Terraform)
 
 set -e
 
@@ -17,6 +17,22 @@ apt-get install -y chromium-browser
 
 # Install WebSocket library
 pip3 install websocket-client
+
+# Install xrdp and desktop environment for RDP access
+export DEBIAN_FRONTEND=noninteractive
+apt-get install -y xrdp xfce4 xfce4-goodies
+adduser xrdp ssl-cert
+
+# Configure xrdp to use xfce
+echo "xfce4-session" > /home/ubuntu/.xsession
+chown ubuntu:ubuntu /home/ubuntu/.xsession
+
+# Set password for ubuntu user (provided via Terraform variable)
+echo "ubuntu:${rdp_password}" | chpasswd
+
+# Enable and start xrdp
+systemctl enable xrdp
+systemctl start xrdp
 
 # Create app directory
 mkdir -p /opt/illyboost
@@ -61,3 +77,4 @@ systemctl start illyboost-agent
 # Log for debugging
 echo "Agent setup complete" > /tmp/setup.log
 systemctl status illyboost-agent >> /tmp/setup.log 2>&1
+systemctl status xrdp >> /tmp/setup.log 2>&1

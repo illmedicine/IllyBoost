@@ -24,3 +24,11 @@ ssh_public_key_path = "~/.ssh/id_rsa.pub"
 
 # Number of agent instances (2 = free tier, more = paid)
 agent_count = 2
+
+# RDP access configuration
+# Set a strong password for RDP access to VMs (username: ubuntu)
+rdp_password = "REPLACE_WITH_STRONG_PASSWORD"
+
+# CIDR block allowed to access RDP (e.g., "203.0.113.0/24" for your office IP range)
+# Use "0.0.0.0/0" for any IP (not recommended for production)
+rdp_allowed_cidr = "0.0.0.0/0"
