@@ -22,8 +22,12 @@ function getBackendUrl() {
   }
   
   // For GitHub Pages or other static hosts, return null (need manual configuration)
-  if (typeof window !== 'undefined' && window.location?.hostname?.includes('github.io')) {
-    return null;
+  // Check if hostname ends with .github.io (exact domain match)
+  if (typeof window !== 'undefined' && window.location?.hostname) {
+    const hostname = window.location.hostname;
+    if (hostname === 'github.io' || hostname.endsWith('.github.io')) {
+      return null;
+    }
   }
   
   // For other deployed environments, try to derive from hostname
@@ -178,11 +182,11 @@ function BackendConfigModal({ isOpen, onClose, currentUrl, onSave }) {
   if (!isOpen) return null;
   
   const handleSave = () => {
-    if (inputUrl && inputUrl.startsWith('http')) {
+    if (inputUrl && (inputUrl.startsWith('http://') || inputUrl.startsWith('https://'))) {
       onSave(inputUrl);
       onClose();
     } else {
-      alert('Please enter a valid URL starting with http:// or https://');
+      alert('Please enter a valid URL in the format http://hostname:3001 or https://hostname:3001');
     }
   };
   
@@ -367,6 +371,8 @@ export default function App(){
     localStorage.setItem('illyboost_backend_url', newUrl);
     setApiUrl(newUrl);
     setBackendStatus('connecting');
+    // Immediately attempt to connect after configuration
+    connectWebSocket(newUrl);
   }
 
   function onChange(id, url){
@@ -385,7 +391,6 @@ export default function App(){
 
   async function runSelected(){
     if (!apiUrl) {
-      alert('Please configure the backend URL first by clicking the ⚙️ button.');
       setShowConfigModal(true);
       return;
     }
@@ -483,13 +488,17 @@ if (typeof window !== 'undefined') {
           const apiUrl = savedUrl || getBackendUrl();
           
           if (!apiUrl) {
-            document.body.innerHTML = '<pre>Backend not configured. Please configure the backend URL in the main app first.</pre>';
+            const pre = document.createElement('pre');
+            pre.textContent = 'Backend not configured. Please configure the backend URL in the main app first.';
+            document.body.appendChild(pre);
             return;
           }
           
           const res = await fetch(apiUrl + '/render/' + row);
           if (res.status === 204) {
-            document.body.innerHTML = '<pre>No render available yet</pre>';
+            const pre = document.createElement('pre');
+            pre.textContent = 'No render available yet';
+            document.body.appendChild(pre);
             return;
           }
           const html = await res.text();
@@ -498,7 +507,9 @@ if (typeof window !== 'undefined') {
           document.write(html);
           document.close();
         } catch (e) {
-          document.body.innerHTML = '<pre>failed to fetch render: '+e+'</pre>';
+          const pre = document.createElement('pre');
+          pre.textContent = 'Failed to fetch render: ' + String(e);
+          document.body.appendChild(pre);
         }
       })();
     }
