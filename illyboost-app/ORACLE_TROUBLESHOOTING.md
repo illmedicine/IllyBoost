@@ -183,7 +183,7 @@ https://illmedicine.github.io
 
 #### Update Backend CORS Configuration
 
-Edit `/home/runner/work/IllyBoost/IllyBoost/illyboost-app/backend/server.js`:
+Edit `backend/server.js` in your backend directory:
 
 ```javascript
 // Replace this:

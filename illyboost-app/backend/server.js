@@ -27,7 +27,10 @@ app.use(bodyParser.json());
 const staticPath = process.env.STATIC_PATH || path.join(__dirname, 'public');
 app.use(express.static(staticPath));
 
-const HOST = process.env.HOST || '0.0.0.0';  // Bind to all interfaces by default
+// Network configuration
+// HOST defaults to '0.0.0.0' to allow external access (required for cloud deployments)
+// For local-only development, set HOST=localhost or HOST=127.0.0.1
+const HOST = process.env.HOST || '0.0.0.0';
 const PORT = process.env.PORT || 3001;
 const WS_PORT = process.env.WS_PORT || 3002;
 const FRONT_WS_PORT = process.env.FRONT_WS_PORT || 3003;

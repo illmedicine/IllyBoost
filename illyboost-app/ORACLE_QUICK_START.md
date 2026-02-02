@@ -102,21 +102,37 @@ Open: http://localhost:5173/IllyBoost/
 
 ## Troubleshooting
 
-### Agents not showing up in frontend
+**For comprehensive troubleshooting, see [ORACLE_TROUBLESHOOTING.md](ORACLE_TROUBLESHOOTING.md)**
+
+### Quick Fixes
+
+#### Agents not showing up in frontend
 - Wait 3-5 minutes for instances to fully boot
 - SSH into backend and check: `curl http://localhost:3001/agents`
 - Check logs: `journalctl -u illyboost-agent -f`
 
-### Can't connect to backend
-- Verify backend IP in `App.jsx` is correct
-- Try pinging: `ping YOUR_BACKEND_IP`
-- Check security group allows ports 3001-3003
+#### Can't connect to backend ("Could not connect")
+```bash
+# 1. Verify backend is running and bound to 0.0.0.0
+ssh ubuntu@YOUR_BACKEND_IP
+sudo lsof -i -P -n | grep LISTEN | grep node
 
-### Chrome not found on agent
+# Should show: 0.0.0.0:3001 (GOOD)
+# If shows: 127.0.0.1:3001 (BAD)
+
+# 2. Test from your laptop
+curl http://YOUR_BACKEND_IP:3001/health
+
+# If fails, see ORACLE_TROUBLESHOOTING.md for complete checklist
+```
+
+#### Chrome not found on agent
 ```bash
 ssh ubuntu@YOUR_AGENT_IP
 sudo apt install -y chromium-browser
 ```
+
+**For detailed step-by-step troubleshooting:** [ORACLE_TROUBLESHOOTING.md](ORACLE_TROUBLESHOOTING.md)
 
 ---
 
@@ -155,10 +171,11 @@ terraform destroy -var-file=oracle.tfvars
 ## Support
 
 If stuck:
-1. Check `ORACLE_SETUP_COMPLETE.md` for detailed troubleshooting
-2. View Terraform logs: `terraform show`
-3. SSH to instances and check logs: `journalctl -u illyboost-backend -f`
-4. Check Oracle Cloud Console for instance status
+1. **See comprehensive guide:** [ORACLE_TROUBLESHOOTING.md](ORACLE_TROUBLESHOOTING.md)
+2. Check `ORACLE_SETUP_COMPLETE.md` for detailed troubleshooting
+3. View Terraform logs: `terraform show`
+4. SSH to instances and check logs: `journalctl -u illyboost-backend -f`
+5. Check Oracle Cloud Console for instance status
 
 ---
 

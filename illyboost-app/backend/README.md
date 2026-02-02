@@ -46,8 +46,9 @@ Behavior:
 
 ### Network Configuration
 - `HOST` - host to bind to (default `0.0.0.0` for all interfaces)
-  - **Production:** Set to `0.0.0.0` to allow external access
-  - **Development:** Use `localhost` or `127.0.0.1` for local-only access
+  - **Production/Cloud:** Use `0.0.0.0` to allow external access (default)
+  - **Local-only development:** Set `HOST=localhost` or `HOST=127.0.0.1` for security
+  - **Note:** IllyBoost is designed for cloud deployment, so `0.0.0.0` is the default. For local development where you don't need external access, explicitly set `HOST=localhost`.
 - `PORT` - REST API port (default `3001`)
 - `WS_PORT` - agent WS port (default `3002`)
 - `FRONT_WS_PORT` - frontend WS port (default `3003`)

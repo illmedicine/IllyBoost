@@ -113,14 +113,19 @@ npm install
 
 # Start with TLS (recommended)
 # Generate self-signed cert or use Let's Encrypt
-SSL_KEY_PATH=/path/to/key.pem SSL_CERT_PATH=/path/to/cert.pem npm start
+SSL_KEY_PATH=/path/to/key.pem SSL_CERT_PATH=/path/to/cert.pem HOST=0.0.0.0 npm start
+
+# Or start without TLS (ensure HOST=0.0.0.0 for external access)
+HOST=0.0.0.0 npm start
 
 # Or use PM2 for persistence
 npm install -g pm2
-pm2 start server.js --name illyboost-backend
+HOST=0.0.0.0 pm2 start server.js --name illyboost-backend
 pm2 startup
 pm2 save
 ```
+
+**Important:** Always set `HOST=0.0.0.0` in production to allow external connections. Without it, the backend will only be accessible from within the VM itself.
 
 **Option B: Using Terraform (Automated)**
 
