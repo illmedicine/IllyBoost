@@ -1,13 +1,12 @@
 import React, {useEffect, useState, useRef} from 'react'
 import axios from 'axios'
 
-// Backend URL: use VITE_API env var, or fallback to deployed backend, or localhost for dev
-const DEPLOYED_BACKEND = 'https://ec2-98-92-177-248.compute-1.amazonaws.com:3001';
+// Backend URL: use VITE_API env var, or derive from current hostname for deployed environments, or localhost for dev
 const API = (import.meta?.env?.VITE_API && import.meta.env.VITE_API.startsWith('http'))
   ? import.meta.env.VITE_API
-  : (typeof window !== 'undefined' && window.location?.hostname === 'localhost')
-    ? 'http://localhost:3001'
-    : DEPLOYED_BACKEND
+  : (typeof window !== 'undefined' && window.location?.hostname && window.location.hostname !== 'localhost')
+    ? `${window.location.protocol}//${window.location.hostname}:3001`
+    : 'http://localhost:3001'
 
 function formatBytes(b){
   if (!b) return '0 B';
