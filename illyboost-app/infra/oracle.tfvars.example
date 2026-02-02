@@ -1,5 +1,8 @@
 # Oracle Cloud Configuration for IllyBoost
 # Get these values from your Oracle Cloud Console
+#
+# WARNING: Never commit this file with actual credentials!
+# Create a copy (e.g., oracle.tfvars) with your real values and keep it secure.
 
 # Your Tenancy OCID (from My Profile → Tenancy Information)
 tenancy_ocid = "REPLACE_WITH_YOUR_TENANCY_OCID"
@@ -24,3 +27,15 @@ ssh_public_key_path = "~/.ssh/id_rsa.pub"
 
 # Number of agent instances (2 = free tier, more = paid)
 agent_count = 2
+
+# RDP access configuration
+# Set a strong password for RDP access to VMs (username: ubuntu)
+# WARNING: Use a strong, unique password and never commit actual credentials!
+rdp_password = "REPLACE_WITH_STRONG_PASSWORD"
+
+# CIDR block allowed to access RDP (REQUIRED - no default for security)
+# Examples:
+#   "203.0.113.45/32"    - Single IP address
+#   "203.0.113.0/24"     - IP range for your office
+#   "0.0.0.0/0"          - Any IP (NOT RECOMMENDED for production)
+rdp_allowed_cidr = "REPLACE_WITH_YOUR_IP_CIDR"

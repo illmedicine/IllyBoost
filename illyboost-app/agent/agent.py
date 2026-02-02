@@ -151,7 +151,30 @@ def on_message(_, message):
             pass
         try:
             user_data = f"/tmp/illy-{AGENT_ID}-{rowId}"
-            cmd = ['google-chrome', '--no-sandbox', '--disable-gpu', '--user-data-dir=' + user_data, url]
+            # Try multiple Chrome/Chromium variants
+            chrome_binaries = [
+                'google-chrome',
+                'google-chrome-stable',
+                'chromium',
+                'chromium-browser',
+            ]
+            chrome_cmd = None
+            for binary in chrome_binaries:
+                try:
+                    # Check if binary exists
+                    result = subprocess.run(['which', binary], capture_output=True, timeout=2)
+                    if result.returncode == 0:
+                        chrome_cmd = binary
+                        print(f'Found browser: {binary}')
+                        break
+                except Exception:
+                    continue
+            
+            if not chrome_cmd:
+                raise Exception('No Chrome/Chromium binary found. Tried: ' + ', '.join(chrome_binaries))
+            
+            cmd = [chrome_cmd, '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--user-data-dir=' + user_data, url]
+            print(f'Launching: {" ".join(cmd)}')
             proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             send({'type': 'status', 'agentId': AGENT_ID, 'rowId': rowId, 'state': 'running', 'error': None})
         except Exception as e:

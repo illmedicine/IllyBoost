@@ -45,3 +45,14 @@ variable "agent_count" {
   description = "Number of agent instances to create"
   default     = 2
 }
+
+variable "rdp_password" {
+  type        = string
+  description = "Password for RDP access to VMs (username: ubuntu)"
+  sensitive   = true
+}
+
+variable "rdp_allowed_cidr" {
+  type        = string
+  description = "CIDR block allowed to access RDP (e.g., your office IP). Must be explicitly set - no default value for security."
+}

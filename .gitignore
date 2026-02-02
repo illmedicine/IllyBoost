@@ -9,3 +9,5 @@
 *.tfstate
 *.tfstate.*
 .terraform.lock.hcl
+oracle.tfvars
+terraform.tfvars
