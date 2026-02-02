@@ -72,6 +72,7 @@ jobs:
         run: |
           echo "### Deployment Successful! :rocket:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**URL:** ${{ steps.deployment.outputs.page_url }}" >> $GITHUB_STEP_SUMMARY
+          URL="${{ steps.deployment.outputs.page_url }}"
+          echo "**URL:** $URL" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "The IllyBoost UI has been deployed to GitHub Pages." >> $GITHUB_STEP_SUMMARY
+          echo "IllyBoost UI deployed to GitHub Pages." >> $GITHUB_STEP_SUMMARY
