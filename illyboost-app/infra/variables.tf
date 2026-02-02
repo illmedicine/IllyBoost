@@ -54,6 +54,5 @@ variable "rdp_password" {
 
 variable "rdp_allowed_cidr" {
   type        = string
-  description = "CIDR block allowed to access RDP (e.g., your office IP). Use 0.0.0.0/0 for any IP (not recommended for production)"
-  default     = "0.0.0.0/0"
+  description = "CIDR block allowed to access RDP (e.g., your office IP). Must be explicitly set - no default value for security."
 }
