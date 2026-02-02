@@ -98,6 +98,8 @@ header p{color:var(--muted);font-size:13px;margin-top:6px}
 .status-button.connecting{background:rgba(124,58,237,0.12);border-color:rgba(124,58,237,0.3);color:var(--accent2);animation:pulse-text 1.5s infinite}
 .status-button.offline{background:rgba(255,107,107,0.12);border-color:rgba(255,107,107,0.3);color:#ff6b6b}
 .status-button.offline:hover:not(:disabled){background:rgba(255,107,107,0.2);border-color:#ff6b6b}
+.status-button.unconfigured{background:rgba(255,170,0,0.12);border-color:rgba(255,170,0,0.3);color:#ffaa00}
+.status-button.unconfigured:hover:not(:disabled){background:rgba(255,170,0,0.2);border-color:#ffaa00}
 
 /* Backend ready hint text */
 .backend-ready-hint{font-size:12px;color:var(--accent1);font-weight:500;animation:fadeInUp 400ms ease both}
