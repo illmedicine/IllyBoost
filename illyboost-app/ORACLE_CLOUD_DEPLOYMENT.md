@@ -90,16 +90,18 @@ cd IllyBoost/illyboost-app/backend
 # Install dependencies
 npm install
 
-# Start backend
-node server.js
+# Start backend (bind to all interfaces for external access)
+HOST=0.0.0.0 node server.js
 ```
 
 **Should output:**
 ```
-Backend API listening 3001
-Agent WS server listening on 3002
-Frontend WS server listening on 3003
+Backend API listening on 0.0.0.0:3001
+Agent WS server listening on 0.0.0.0:3002
+Frontend WS server listening on 0.0.0.0:3003
 ```
+
+**Important:** The `HOST=0.0.0.0` is critical for external access. Without it, the backend will only be accessible from within the VM itself.
 
 ## Step 6: Deploy Agents
 
@@ -207,7 +209,11 @@ Add paid instances alongside free ones:
 
 ## Troubleshooting
 
-### Can't SSH into instance
+**For comprehensive troubleshooting, see [ORACLE_TROUBLESHOOTING.md](ORACLE_TROUBLESHOOTING.md)**
+
+### Quick Fixes
+
+#### Can't SSH into instance
 ```bash
 # Check security rules include port 22
 # Verify instance has public IP assigned
@@ -215,7 +221,23 @@ Add paid instances alongside free ones:
 chmod 600 your-private-key.pem
 ```
 
-### Agent can't connect to backend
+#### Frontend can't connect to backend ("Could not connect")
+```bash
+# 1. Verify backend is bound to 0.0.0.0, not 127.0.0.1
+ssh ubuntu@<backend-ip>
+sudo lsof -i -P -n | grep LISTEN | grep node
+
+# Should show: 0.0.0.0:3001 (GOOD)
+# If shows: 127.0.0.1:3001 (BAD - restart with HOST=0.0.0.0)
+
+# 2. Test from outside the VM
+curl http://<backend-ip>:3001/health
+
+# 3. If fails, check security list and firewall
+# See ORACLE_TROUBLESHOOTING.md for complete checklist
+```
+
+#### Agent can't connect to backend
 ```bash
 # Verify backend is running
 ssh ubuntu@<backend-ip>
@@ -229,7 +251,7 @@ ping <backend-ip>
 nc -zv <backend-ip> 3002
 ```
 
-### Chrome not found on agent
+#### Chrome not found on agent
 ```bash
 # Install Chromium
 sudo apt install -y chromium-browser
@@ -238,9 +260,12 @@ sudo apt install -y chromium-browser
 which chromium-browser
 ```
 
-### WebSocket connection timeout
-- Check security rules allow port 3002 inbound
-- Verify backend is listening: `netstat -tuln | grep 3002`
+#### WebSocket connection timeout
+- Check security rules allow ports 3001-3003 inbound
+- Verify backend is listening: `sudo lsof -i -P -n | grep LISTEN`
+- Ensure backend started with `HOST=0.0.0.0`
+
+**For detailed step-by-step troubleshooting, see [ORACLE_TROUBLESHOOTING.md](ORACLE_TROUBLESHOOTING.md)**
 
 ## Keep Instances Running
 

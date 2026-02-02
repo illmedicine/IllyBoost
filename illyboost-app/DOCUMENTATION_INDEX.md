@@ -8,6 +8,9 @@
 
 ### 📖 Detailed Guides
 - **[PRODUCTION_SETUP.md](PRODUCTION_SETUP.md)** - Complete production deployment guide
+- **[ORACLE_CLOUD_DEPLOYMENT.md](ORACLE_CLOUD_DEPLOYMENT.md)** - Oracle Cloud setup guide
+- **[ORACLE_QUICK_START.md](ORACLE_QUICK_START.md)** - Quick Oracle Cloud deployment (15 mins)
+- **[ORACLE_TROUBLESHOOTING.md](ORACLE_TROUBLESHOOTING.md)** - Complete connectivity troubleshooting guide
 - **[PRODUCTION_READY.md](PRODUCTION_READY.md)** - Full feature checklist
 - **[SCREENSHOT_PREVIEW_FEATURE.md](SCREENSHOT_PREVIEW_FEATURE.md)** - Screenshot feature documentation
 - **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - Architecture and technical overview
@@ -26,6 +29,9 @@
 | [README.md](README.md) | Main entry point | First-time users, quick start |
 | [IMPLEMENTATION_COMPLETE.md](IMPLEMENTATION_COMPLETE.md) | Delivery summary | Understanding what's ready |
 | [PRODUCTION_SETUP.md](PRODUCTION_SETUP.md) | Deployment guide | Deploying to production |
+| [ORACLE_CLOUD_DEPLOYMENT.md](ORACLE_CLOUD_DEPLOYMENT.md) | Oracle Cloud guide | Oracle Cloud deployment |
+| [ORACLE_QUICK_START.md](ORACLE_QUICK_START.md) | Quick Oracle setup | Fast Oracle deployment |
+| [ORACLE_TROUBLESHOOTING.md](ORACLE_TROUBLESHOOTING.md) | Connection issues | Fixing "Could not connect" errors |
 | [PRODUCTION_READY.md](PRODUCTION_READY.md) | Feature checklist | Verifying features |
 | [SCREENSHOT_PREVIEW_FEATURE.md](SCREENSHOT_PREVIEW_FEATURE.md) | Feature deep-dive | Understanding screenshots |
 | [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md) | Architecture reference | System design |
@@ -91,7 +97,8 @@ IMPLEMENTATION_COMPLETE.md           # Delivery summary
 → **Backend:** [backend/README.md](backend/README.md)
 
 ### 5. **I'm having issues**
-→ Check [README.md](README.md#troubleshooting)
+→ **Oracle Cloud connectivity:** [ORACLE_TROUBLESHOOTING.md](ORACLE_TROUBLESHOOTING.md)
+→ **General issues:** [README.md](README.md#troubleshooting)
 → Review component-specific docs
 → Check backend logs and browser console
 
@@ -154,9 +161,11 @@ IMPLEMENTATION_COMPLETE.md           # Delivery summary
 ### For Production Deployment
 1. [README.md](README.md) - Quick overview
 2. [PRODUCTION_SETUP.md](PRODUCTION_SETUP.md) - Detailed deployment
-3. [backend/README.md](backend/README.md) - Backend config
-4. [infra/README.md](infra/README.md) - Terraform
-5. Deploy and test
+3. [ORACLE_CLOUD_DEPLOYMENT.md](ORACLE_CLOUD_DEPLOYMENT.md) - Oracle Cloud specific
+4. [backend/README.md](backend/README.md) - Backend config
+5. [infra/README.md](infra/README.md) - Terraform
+6. Deploy and test
+7. If issues: [ORACLE_TROUBLESHOOTING.md](ORACLE_TROUBLESHOOTING.md)
 
 ### For Developers
 1. [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md) - Architecture
@@ -176,6 +185,7 @@ IMPLEMENTATION_COMPLETE.md           # Delivery summary
    - Agents: `docker logs <container-id>`
 
 2. **Check the documentation:**
+   - **Oracle Cloud issues:** [ORACLE_TROUBLESHOOTING.md](ORACLE_TROUBLESHOOTING.md)
    - [README.md](README.md) Troubleshooting section
    - Component-specific README files
    - [PRODUCTION_SETUP.md](PRODUCTION_SETUP.md) for production issues
@@ -187,6 +197,8 @@ IMPLEMENTATION_COMPLETE.md           # Delivery summary
    - Ports available: 3001, 3002, 3003
 
 4. **Common issues:**
+   - **"Could not connect to backend"** → [ORACLE_TROUBLESHOOTING.md](ORACLE_TROUBLESHOOTING.md)
+   - **Backend not accessible from outside VM** → Restart with `HOST=0.0.0.0`
    - Port already in use → Kill process or change port
    - Node modules missing → Run `npm install`
    - Frontend can't connect → Check API URL in App.jsx
