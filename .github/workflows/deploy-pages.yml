@@ -21,6 +21,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -38,6 +41,17 @@ jobs:
           VITE_API: ${{ vars.VITE_API }}
         run: npm run build
 
+      - name: Verify build output
+        working-directory: illyboost-app/frontend
+        run: |
+          echo "Verifying build output..."
+          ls -la dist/
+          if [ ! -f dist/index.html ]; then
+            echo "Error: index.html not found in dist/"
+            exit 1
+          fi
+          echo "Build verification successful!"
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -53,3 +67,12 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Output deployment URL
+        run: |
+          echo "### Deployment Successful! :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          URL="${{ steps.deployment.outputs.page_url }}"
+          echo "**URL:** $URL" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "IllyBoost UI deployed to GitHub Pages." >> $GITHUB_STEP_SUMMARY
