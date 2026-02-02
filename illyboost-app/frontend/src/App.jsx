@@ -1,9 +1,73 @@
 import React, {useEffect, useState, useRef} from 'react'
 import axios from 'axios'
 
-// Backend URL: check localStorage first, then VITE_API env var, then derive from hostname
+// Get recent backends from localStorage
+function getRecentBackends() {
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem('illyboost_recent_backends');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.warn('Failed to load recent backends from localStorage:', e);
+    }
+  }
+  return [];
+}
+
+// Save a backend URL to recent list
+function saveToRecentBackends(url) {
+  if (typeof window === 'undefined' || !url) return;
+  try {
+    let recent = getRecentBackends();
+    // Remove if already exists (will re-add at front)
+    recent = recent.filter(r => r !== url);
+    // Add to front
+    recent.unshift(url);
+    // Keep only last 5
+    recent = recent.slice(0, 5);
+    localStorage.setItem('illyboost_recent_backends', JSON.stringify(recent));
+  } catch (e) {
+    console.warn('Failed to save recent backends to localStorage:', e);
+  }
+}
+
+// Check for backend URL in URL parameters (for easy sharing)
+function getBackendFromUrlParams() {
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search);
+    const backendParam = params.get('backend');
+    if (backendParam) {
+      // Support both formats: "IP:PORT" and "http://IP:PORT"
+      if (backendParam.startsWith('http://') || backendParam.startsWith('https://')) {
+        return backendParam;
+      }
+      // Assume HTTP if just IP:PORT
+      return `http://${backendParam}`;
+    }
+  }
+  return null;
+}
+
+// Backend URL: check URL params first, then localStorage, then VITE_API env var, then derive from hostname
 function getBackendUrl() {
-  // First check localStorage for user-configured URL
+  // First check URL parameters (highest priority - allows sharing links)
+  const urlParamBackend = getBackendFromUrlParams();
+  if (urlParamBackend) {
+    // Save to localStorage and recent list for persistence
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('illyboost_backend_url', urlParamBackend);
+      saveToRecentBackends(urlParamBackend);
+      // Clean URL to remove the parameter (optional - keeps URL clean)
+      const url = new URL(window.location.href);
+      url.searchParams.delete('backend');
+      window.history.replaceState({}, '', url.toString());
+    }
+    return urlParamBackend;
+  }
+  
+  // Then check localStorage for user-configured URL
   if (typeof window !== 'undefined') {
     const saved = localStorage.getItem('illyboost_backend_url');
     if (saved && saved.startsWith('http')) {
@@ -178,36 +242,93 @@ const defaultRows = Array.from({length:20}, (_,i)=>({id:i+1,url:'',state:'idle',
 // Backend Configuration Modal Component
 function BackendConfigModal({ isOpen, onClose, currentUrl, onSave }) {
   const [inputUrl, setInputUrl] = React.useState(currentUrl || '');
+  const [recentBackends, setRecentBackends] = React.useState([]);
+  const [showHelp, setShowHelp] = React.useState(false);
+  
+  React.useEffect(() => {
+    setRecentBackends(getRecentBackends());
+  }, [isOpen]);
   
   if (!isOpen) return null;
   
   const handleSave = () => {
-    if (inputUrl && (inputUrl.startsWith('http://') || inputUrl.startsWith('https://'))) {
-      onSave(inputUrl);
+    let url = inputUrl.trim();
+    // Auto-add http:// if user just entered IP:PORT
+    if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+      url = `http://${url}`;
+    }
+    if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+      saveToRecentBackends(url);
+      onSave(url);
       onClose();
     } else {
-      alert('Please enter a valid URL in the format http://hostname:3001 or https://hostname:3001');
+      alert('Please enter a valid URL or IP:PORT (e.g., 123.45.67.89:3001)');
     }
+  };
+  
+  const handleSelectRecent = (url) => {
+    setInputUrl(url);
+  };
+  
+  const handleDeleteRecent = (urlToDelete, e) => {
+    e.stopPropagation();
+    const updated = recentBackends.filter(u => u !== urlToDelete);
+    localStorage.setItem('illyboost_recent_backends', JSON.stringify(updated));
+    setRecentBackends(updated);
   };
   
   return (
     <div className="preview-modal active" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="preview-modal-content" style={{maxWidth: '500px'}}>
+      <div className="preview-modal-content" style={{maxWidth: '550px'}}>
         <button className="preview-modal-close" onClick={onClose}>×</button>
         <div className="preview-modal-title">⚙️ Configure Backend Server</div>
-        <div style={{marginBottom: '16px', color: 'rgba(255,255,255,0.7)', fontSize: '14px'}}>
-          <p>Enter the URL of your IllyBoost backend server.</p>
-          <p style={{marginTop: '8px'}}>This is typically your Oracle Cloud VM's public IP with port 3001.</p>
-        </div>
+        
+        {/* Recent Backends Section */}
+        {recentBackends.length > 0 && (
+          <div style={{marginBottom: '16px'}}>
+            <label style={{display: 'block', marginBottom: '8px', color: 'rgba(255,255,255,0.6)', fontSize: '12px'}}>
+              📋 Recent Backends (click to select):
+            </label>
+            <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px'}}>
+              {recentBackends.map((url, idx) => (
+                <button 
+                  key={idx}
+                  onClick={() => handleSelectRecent(url)}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    border: inputUrl === url ? '1px solid var(--accent1)' : '1px solid rgba(255,255,255,0.15)',
+                    background: inputUrl === url ? 'rgba(0,245,160,0.15)' : 'rgba(255,255,255,0.05)',
+                    color: inputUrl === url ? 'var(--accent1)' : 'rgba(255,255,255,0.8)',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  {url.replace('http://', '').replace('https://', '')}
+                  <span 
+                    onClick={(e) => handleDeleteRecent(url, e)}
+                    style={{opacity: 0.5, cursor: 'pointer'}}
+                    title="Remove from recent"
+                  >×</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        
         <div style={{marginBottom: '16px'}}>
           <label style={{display: 'block', marginBottom: '8px', color: 'rgba(255,255,255,0.6)', fontSize: '12px'}}>
-            Backend URL:
+            Backend URL or IP:PORT:
           </label>
           <input 
             type="text" 
             value={inputUrl} 
             onChange={(e) => setInputUrl(e.target.value)}
-            placeholder="http://your-backend-ip:3001"
+            onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+            placeholder="123.45.67.89:3001 or http://your-backend-ip:3001"
             style={{
               width: '100%',
               padding: '12px',
@@ -218,14 +339,59 @@ function BackendConfigModal({ isOpen, onClose, currentUrl, onSave }) {
               fontSize: '14px'
             }}
           />
+          <div style={{fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '4px'}}>
+            💡 Just enter the IP:PORT — http:// will be added automatically
+          </div>
         </div>
-        <div style={{display: 'flex', gap: '12px', justifyContent: 'flex-end'}}>
+        
+        <div style={{display: 'flex', gap: '12px', justifyContent: 'flex-end', marginBottom: '16px'}}>
           <button className="btn ghost" onClick={onClose}>Cancel</button>
           <button className="btn" onClick={handleSave}>Save & Connect</button>
         </div>
-        <div style={{marginTop: '16px', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', fontSize: '12px', color: 'rgba(255,255,255,0.5)'}}>
-          <strong>Example:</strong> http://123.45.67.89:3001<br/>
-          <strong>Tip:</strong> Get the IP from your Oracle Cloud or Terraform outputs
+        
+        {/* Help Section */}
+        <div style={{borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '16px'}}>
+          <button 
+            onClick={() => setShowHelp(!showHelp)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--accent1)',
+              cursor: 'pointer',
+              fontSize: '13px',
+              padding: '0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            {showHelp ? '▼' : '▶'} How do I find my backend IP?
+          </button>
+          
+          {showHelp && (
+            <div style={{marginTop: '12px', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', fontSize: '12px', color: 'rgba(255,255,255,0.7)'}}>
+              <p style={{marginBottom: '12px'}}><strong>Option 1: From Terraform Output</strong></p>
+              <p style={{marginBottom: '8px', color: 'rgba(255,255,255,0.5)'}}>After running <code style={{background: 'rgba(0,0,0,0.3)', padding: '2px 6px', borderRadius: '4px'}}>terraform apply</code>, look for:</p>
+              <pre style={{background: 'rgba(0,0,0,0.3)', padding: '8px', borderRadius: '4px', overflow: 'auto', marginBottom: '12px'}}>
+backend_public_ip = "YOUR_BACKEND_IP"
+              </pre>
+              
+              <p style={{marginBottom: '12px'}}><strong>Option 2: From Oracle Cloud Console</strong></p>
+              <ol style={{marginLeft: '16px', color: 'rgba(255,255,255,0.5)'}}>
+                <li>Go to Compute → Instances</li>
+                <li>Click on "illyboost-backend"</li>
+                <li>Copy the "Public IP Address"</li>
+              </ol>
+              
+              <p style={{marginTop: '16px', marginBottom: '8px'}}><strong>Share Link with Backend Pre-configured:</strong></p>
+              <p style={{color: 'rgba(255,255,255,0.5)'}}>
+                Add <code style={{background: 'rgba(0,0,0,0.3)', padding: '2px 6px', borderRadius: '4px'}}>?backend=YOUR_IP:3001</code> to the URL, e.g.:<br/>
+                <code style={{background: 'rgba(0,0,0,0.3)', padding: '4px 8px', borderRadius: '4px', display: 'block', marginTop: '4px', wordBreak: 'break-all'}}>
+                  {window.location.origin}{window.location.pathname}?backend=YOUR_IP:3001
+                </code>
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

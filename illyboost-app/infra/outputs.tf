@@ -37,3 +37,13 @@ output "rdp_connections_agents" {
   description = "RDP connection addresses for agents (username: ubuntu)"
   value       = [for i, instance in oci_core_instance.agent : "${instance.public_ip}:3389 # agent-${i + 1}"]
 }
+
+output "illyboost_frontend_url" {
+  description = "Direct link to IllyBoost frontend with backend pre-configured (open this URL to auto-connect)"
+  value       = "https://illmedicine.github.io/IllyBoost/?backend=${oci_core_instance.backend.public_ip}:3001"
+}
+
+output "backend_api_url" {
+  description = "Backend API URL for manual configuration"
+  value       = "http://${oci_core_instance.backend.public_ip}:3001"
+}
