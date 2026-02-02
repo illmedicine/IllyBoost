@@ -10,7 +10,7 @@ apt-get update
 apt-get upgrade -y
 
 # Install Python and pip
-apt-get install -y python3 python3-pip
+apt-get install -y python3 python3-pip git
 
 # Install Chrome/Chromium
 apt-get install -y chromium-browser
@@ -38,13 +38,19 @@ systemctl start xrdp
 mkdir -p /opt/illyboost
 cd /opt/illyboost
 
-# Clone repository (adjust URL as needed)
-git clone https://github.com/yourusername/IllyBoost.git .
+# Clone repository from the actual GitHub repo
+git clone https://github.com/illmedicine/IllyBoost.git . || {
+  echo "Failed to clone repository, creating minimal agent setup"
+  mkdir -p illyboost-app/agent
+  # Download just the agent.py file
+  curl -sL https://raw.githubusercontent.com/illmedicine/IllyBoost/main/illyboost-app/agent/agent.py -o illyboost-app/agent/agent.py
+}
 
 # Set environment variables
 cat > /etc/environment << EOF
 BACKEND_WS="ws://${backend_host}:3002"
 AGENT_ID="${agent_id}"
+DISPLAY=":0"
 PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 EOF
 
@@ -52,7 +58,8 @@ EOF
 cat > /etc/systemd/system/illyboost-agent.service << EOF
 [Unit]
 Description=IllyBoost Agent
-After=network.target
+After=network.target xrdp.service
+Wants=xrdp.service
 
 [Service]
 Type=simple
@@ -64,6 +71,7 @@ RestartSec=10
 
 Environment="BACKEND_WS=ws://${backend_host}:3002"
 Environment="AGENT_ID=${agent_id}"
+Environment="DISPLAY=:0"
 
 [Install]
 WantedBy=multi-user.target
@@ -76,5 +84,7 @@ systemctl start illyboost-agent
 
 # Log for debugging
 echo "Agent setup complete" > /tmp/setup.log
+echo "Backend WS: ws://${backend_host}:3002" >> /tmp/setup.log
+echo "Agent ID: ${agent_id}" >> /tmp/setup.log
 systemctl status illyboost-agent >> /tmp/setup.log 2>&1
 systemctl status xrdp >> /tmp/setup.log 2>&1

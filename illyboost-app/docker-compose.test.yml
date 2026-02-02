@@ -4,9 +4,12 @@ services:
     build: ./agent
     environment:
       - BACKEND_HOST=host.docker.internal
+      - BACKEND_WS=ws://host.docker.internal:3002
       - AGENT_SECRET=${AGENT_SECRET:-}
+      - DISPLAY=:99
     # use host.docker.internal so agents can reach host backend on mac/windows
     restart: unless-stopped
+    command: ["/bin/bash", "/app/start.sh"]
     deploy:
       replicas: 1
 

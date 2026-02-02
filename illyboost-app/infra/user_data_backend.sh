@@ -36,8 +36,11 @@ systemctl start xrdp
 mkdir -p /opt/illyboost
 cd /opt/illyboost
 
-# Clone repository (adjust URL as needed)
-git clone https://github.com/yourusername/IllyBoost.git .
+# Clone repository from the actual GitHub repo
+git clone https://github.com/illmedicine/IllyBoost.git . || {
+  echo "Failed to clone repository" >> /tmp/setup.log
+  exit 1
+}
 cd illyboost-app/backend
 
 # Install dependencies
@@ -70,5 +73,6 @@ systemctl start illyboost-backend
 
 # Log for debugging
 echo "Backend setup complete" > /tmp/setup.log
+echo "Repository cloned from: https://github.com/illmedicine/IllyBoost.git" >> /tmp/setup.log
 systemctl status illyboost-backend >> /tmp/setup.log 2>&1
 systemctl status xrdp >> /tmp/setup.log 2>&1
